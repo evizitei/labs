@@ -47,14 +47,14 @@ A:
             for n in self.outbound_nodes:
                 # Derivative of output node w.r.t current node
                 # we can use the self keyword to refer to the current node.
-                grad = n.gradients[self] 
+                grad = n.gradients[self]
 
-                # The derivative of the Add node w.r.t both input nodes is 1 (recall 
+                # The derivative of the Add node w.r.t both input nodes is 1 (recall
                 the notebook).
                 self.gradients[self.inbound_nodes[0]] += 1 * grad
                 self.gradients[self.inbound_nodes[1]] += 1 * grad
 
-The Input and Add nodes have already been implemented for you. All the `gradients` 
+The Input and Add nodes have already been implemented for you. All the `gradients`
 have been initialized for each node class as well.
 
 Look for the TODOs!
@@ -68,11 +68,11 @@ import numpy as np
 #
 
 
-class Node(object):
+class MiniflowNode(object):
     def __init__(self, inbound_nodes):
         self.inbound_nodes = inbound_nodes
         self.outbound_nodes = []
-        # store here the values computed in the forward pass 
+        # store here the values computed in the forward pass
         # that will be used in the backward pass
         self.cache = {}
         # set this value on the forward pass
@@ -90,7 +90,7 @@ class Node(object):
     def forward(self):
         """
         Forward propagation.
-        
+
         Compute the output value based on `inbound_nodes` and
         store the result in self.value.
         """
@@ -99,20 +99,20 @@ class Node(object):
     def backward(self):
         """
         Backward propagation.
-        
+
         Compute the gradient of the current node with respect
         to the input nodes. The gradient of the loss with respect
         to the current node should already be computed in the `gradients`
         attribute of the output nodes.
         """
         raise NotImplemented
-        
+
 
 # NOTE: This node is just here to pass dummy gradients backwards for testing
 # purposes.
-class DummyGrad(Node):
+class DummyGrad(MiniflowNode):
     def __init__(self, x):
-        Node.__init__(self, [x])
+        MiniflowNode.__init__(self, [x])
 
     def forward(self):
         self.value = self.inbound_nodes[0].value
@@ -121,11 +121,11 @@ class DummyGrad(Node):
         self.gradients = {n: grad for n in self.inbound_nodes}
 
 
-class Input(Node):
+class Input(MiniflowNode):
     def __init__(self):
         # an Input node has no incoming nodes
         # so we pass an empty list
-        Node.__init__(self, [])
+        MiniflowNode.__init__(self, [])
 
     # NOTE: Input node is the only node where the value
     # is passed as an argument to forward().
@@ -144,11 +144,11 @@ class Input(Node):
         self.gradients = {self: 0}
         for n in self.outbound_nodes:
             self.gradients[self] += n.gradients[self]
-            
 
-class Add(Node):
+
+class Add(MiniflowNode):
     def __init__(self, x, y):
-        Node.__init__(self, [x, y])
+        MiniflowNode.__init__(self, [x, y])
 
     def forward(self):
         self.value = self.inbound_nodes[0].value + self.inbound_nodes[1].value
@@ -161,23 +161,30 @@ class Add(Node):
             self.gradients[self.inbound_nodes[1]] += 1 * grad
 
 
-class Mul(Node):
+class Mul(MiniflowNode):
     def __init__(self, x, y):
-        Node.__init__(self, [x, y])
+        MiniflowNode.__init__(self, [x, y])
+
+    def x_node(self):
+        self.inbound_nodes[0]
+
+    def y_node(self):
+        self.inbound_nodes[1]
 
     def forward(self):
-        # TODO: implement
-        pass
+        self.value = self.x_node().value * self.y_node().value
 
     def backward(self):
-        # TODO: implement
-        # Look back to the case study example in the notebook.
         self.gradients = {n: 0 for n in self.inbound_nodes}
+        for n in self.outbound_nodes:
+            grad = n.gradients[self]
+            self.gradients[self.x_node()] += self.y_node().value * grad
+            self.gradients[self.y_node()] += self.x_node().value * grad
 
 
-class Linear(Node):
+class Linear(MiniflowNode):
     def __init__(self, x, w, b):
-        Node.__init__(self, [x, w, b])
+        MiniflowNode.__init__(self, [x, w, b])
 
     def forward(self):
         # TODO: implement
@@ -188,9 +195,9 @@ class Linear(Node):
         self.gradients = {n: np.zeros_like(n.value) for n in self.inbound_nodes}
 
 
-class Sigmoid(Node):
+class Sigmoid(MiniflowNode):
     def __init__(self, x):
-        Node.__init__(self, [x])
+        MiniflowNode.__init__(self, [x])
 
     def _sigmoid(self, x):
         # TODO: implement sigmoid function
@@ -207,9 +214,9 @@ class Sigmoid(Node):
 
 # NOTE: assume y is a vector with values 0-9
 # easier to work with than a one-hot encoding
-class CrossEntropyWithSoftmax(Node):
+class CrossEntropyWithSoftmax(MiniflowNode):
     def __init__(self, x, y):
-        Node.__init__(self, [x, y])
+        MiniflowNode.__init__(self, [x, y])
 
     def _predict(self):
         probs = self._softmax(self.inbound_nodes[0].value)
@@ -286,7 +293,7 @@ def accuracy(node, feed_dict):
     # doesn't make sense is output node isn't Softmax
     assert node.typname == 'CrossEntropyWithSoftmax'
     assert nodes[-1].typname == 'CrossEntropyWithSoftmax'
-    
+
 
     # forward pass on all nodes except the last
     for n in nodes[:-1]:
