@@ -339,3 +339,6 @@ def topological_sort(input_nodes):
             if len(G[m]['in']) == 0:
                 S.add(m)
     return L
+
+
+x, y, z = Input(), Input(), Input()
